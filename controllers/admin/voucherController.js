@@ -1,5 +1,5 @@
-const prisma = require('../config/prisma');
-const { createResponse } = require('../utils/response');
+const prisma = require('../../config/prisma');
+const { createResponse } = require('../../utils/response');
 
 /**
  * Create Voucher (Admin)
