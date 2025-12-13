@@ -1,8 +1,8 @@
 const express = require('express');
 const router = express.Router();
-
+const userRoutes = require('./user');
 // Admin user routes
-router.use('/user', require('./user'));
+router.use('/user', userRoutes);
 
 // Admin order routes
 router.use('/order', require('./order'));

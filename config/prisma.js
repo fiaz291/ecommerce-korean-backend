@@ -3,7 +3,8 @@ const { PrismaClient } = require("@prisma/client");
 let prisma;
 
 /**
- * Initialize Prisma Client ONCE.
+ * Initialize Prisma Client ONCE (singleton pattern).
+ * This prevents multiple instances and connection pool exhaustion.
  */
 function initializePrisma() {
   if (!prisma) {
@@ -30,7 +31,10 @@ function getPrisma() {
   return prisma;
 }
 
-module.exports = {
-  initializePrisma,
-  getPrisma,
-};
+// Auto-initialize if called directly (for convenience)
+// This allows: const prisma = require('./config/prisma');
+initializePrisma();
+
+module.exports = prisma; // Export the instance directly
+module.exports.initializePrisma = initializePrisma; // Also export function for explicit initialization
+module.exports.getPrisma = getPrisma; // Export getter function

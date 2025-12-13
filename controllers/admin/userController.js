@@ -1,4 +1,4 @@
-const prisma = require('../../config/prisma');
+const prisma = require('../../config/prisma'); // This now gets the Prisma instance directly
 const { createResponse } = require('../../utils/response');
 const { getToken } = require('../../utils/auth');
 const bcrypt = require('bcrypt');
@@ -126,6 +126,7 @@ const createAdmin = async (req, res, next) => {
       createResponse({ data: { ...newUser }, status: true })
     );
   } catch (error) {
+    console.log(error)
     return res.status(500).json(
       createResponse({ error: 'Internal Server Error', status: false })
     );

@@ -1,19 +1,17 @@
 const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
-
 const { initializePrisma } = require('./config/prisma');
 const prisma = initializePrisma(); // Initialize Prisma ONCE
 
 const app = express();
 const PORT = process.env.BACKEND_PORT || 5000;
+const routes = require('./routes');
 
 // ----------------------
 // Middleware
 // ----------------------
-app.use(
-  cors()
-);
+app.use(cors());
 // {
 //   origin: process.env.FRONTEND_URL || 'http://localhost:3000',
 //   credentials: true,
@@ -31,20 +29,20 @@ app.get('/health', (req, res) => {
 // ----------------------
 // API Routes
 // ----------------------
-app.use('/api', require('./routes'));
+app.use('/api', routes );
 
 // ----------------------
 // Error Handler
 // ----------------------
-app.use((err, req, res, next) => {
-  console.error('Error:', err);
-  res.status(err.status || 500).json({
-    code: err.status || 500,
-    status: false,
-    error: err.message || 'Internal Server Error',
-    data: null,
-  });
-});
+// app.use((err, req, res, next) => {
+//   console.log('Error:', err);
+//   res.status(err.status || 500).json({
+//     code: err.status || 500,
+//     status: false,
+//     error: err.message || 'Internal Server Error',
+//     data: null,
+//   });
+// });
 
 // ----------------------
 // 404 Handler
