@@ -50,69 +50,81 @@ const getOrders = async (req, res, next) => {
  * PATCH /api/admin/order/:id
  * Note: In Next.js it was req.query.id, but in Express we use req.params.id
  */
-const updateOrder = async (req, res, next) => {
+const updateOrder = async (req, res) => {
   try {
-    const { id } = req.params; // Changed from req.query in Next.js
-    const {
-      status,
-      paymentStatus,
-      items,
-      shippingAddress,
-      billingAddress,
-    } = req.body;
+    const { id } = req.params;
+    const { status, paymentStatus } = req.body;
 
     if (!id) {
       return res.status(400).json(
-        createResponse({ 
-          error: 'Order ID is required', 
-          status: false 
-        })
+        createResponse({ error: "Order ID is required", status: false })
       );
     }
 
-    // Fetch the existing order
+    const orderId = parseInt(id);
+
     const existingOrder = await prisma.order.findUnique({
-      where: { id: parseInt(id) },
+      where: { id: orderId },
     });
 
     if (!existingOrder) {
       return res.status(404).json(
-        createResponse({ 
-          error: 'Order not found', 
-          status: false 
-        })
+        createResponse({ error: "Order not found", status: false })
       );
     }
 
-    // Update the order
     const updatedOrder = await prisma.order.update({
-      where: { id: parseInt(id) },
+      where: { id: orderId },
       data: {
-        status: status || existingOrder.status,
-        paymentStatus: paymentStatus || existingOrder.paymentStatus,
-        items: items ? { set: items } : existingOrder.items,
-        shippingAddress: shippingAddress || existingOrder.shippingAddress,
-        billingAddress: billingAddress || existingOrder.billingAddress,
+        status: status ?? existingOrder.status,
+        paymentStatus: paymentStatus ?? existingOrder.paymentStatus,
       },
     });
 
+    // ✅ Create financial transaction ONLY when becoming delivered
+    const isBecomingDelivered =
+      existingOrder.status !== "delivered" &&
+      status === "delivered";
+
+    if (isBecomingDelivered) {
+      // 🔐 Extra safety: ensure no duplicate transaction exists
+      const alreadyExists = await prisma.financialTransaction.findFirst({
+        where: {
+          orderId: existingOrder.id,
+          transactionType: "order",
+        },
+      });
+
+      if (!alreadyExists) {
+        await prisma.financialTransaction.create({
+          data: {
+            userId: existingOrder.userId,
+            orderId: existingOrder.id,
+            storeId: existingOrder.storeId,
+            transactionType: "order",
+            amount: existingOrder.totalAmount,
+            currency: "PKR",
+            description: `Order #${existingOrder.id} delivered`,
+          },
+        });
+      }
+    }
+
     return res.status(200).json(
-      createResponse({ 
-        message: 'Order updated successfully', 
-        data: updatedOrder, 
-        status: true 
+      createResponse({
+        message: "Order updated successfully",
+        data: updatedOrder,
+        status: true,
       })
     );
   } catch (error) {
-    console.error('Error updating order:', error);
+    console.error("Error updating order:", error);
     return res.status(500).json(
-      createResponse({ 
-        error: 'Internal Server Error', 
-        status: false 
-      })
+      createResponse({ error: "Internal Server Error", status: false })
     );
   }
 };
+
 
 module.exports = {
   getOrders,

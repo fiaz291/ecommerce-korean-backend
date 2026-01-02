@@ -97,10 +97,19 @@ const getDateWiseSummary = async (req, res) => {
 
     const summary = await prisma.$queryRaw(finalQuery);
 
+    // ✅ Convert BigInt → Number
+    const normalizedSummary = summary.map((row) => ({
+      date: row.date,
+      total: Number(row.total || 0),
+      income: Number(row.income || 0),
+      expense: Number(row.expense || 0),
+      transactions: Number(row.transactions || 0),
+    }));
+
     return res.status(200).json(
       createResponse({
         status: true,
-        data: summary,
+        data: normalizedSummary,
       })
     );
   } catch (error) {
@@ -113,6 +122,7 @@ const getDateWiseSummary = async (req, res) => {
     );
   }
 };
+
 
 
 
