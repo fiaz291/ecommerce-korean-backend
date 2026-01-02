@@ -2,6 +2,8 @@
 
 Express.js backend server for the e-commerce application.
 
+## SSH Tunnel
+ssh -N -L 5433:127.0.0.1:5432 deploy@72.60.196.143
 ## Setup
 
 1. Install dependencies (from project root):

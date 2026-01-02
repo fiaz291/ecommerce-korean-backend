@@ -50,5 +50,8 @@ router.use('/delivery-charges', require('./deliveryCharges'));
 // Email routes
 router.use('/email', require('./email'));
 
+// Finance Routes
+router.use('/finance', require('./finance'));
+
 module.exports = router;
 
