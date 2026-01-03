@@ -7,7 +7,6 @@ router.post('/login', userController.login);
 router.post('/signup', userController.signup);
 router.get('/', userController.getUser);
 router.patch('/', userController.updateUser);
-router.post('/forget-password', userController.updatePassword);
 router.post('/forgot-password', userController.forgotPassword);
 router.post('/reset-password', userController.resetPassword);
 router.post('/update-password', userController.updatePassword);
