@@ -2,7 +2,7 @@ const prisma = require('../config/prisma');
 const { createResponse, excludeFields } = require('../utils/response');
 const { getToken } = require('../utils/auth');
 const bcrypt = require('bcrypt');
-const { verificationEmail } = require('../utils/email');
+const { verificationEmail, forgotPasswordEmail } = require('../utils/email');
 
 /**
  * User Login
@@ -458,6 +458,103 @@ const searchUsers = async (req, res, next) => {
   }
 };
 
+/**
+ * Forgot Password - Send reset code to email
+ * POST /api/user/forgot-password
+ */
+const forgotPassword = async (req, res, next) => {
+  const { email } = req.body;
+
+  if (!email) {
+    return res.status(400).json(
+      createResponse({ error: 'Email is required', status: false })
+    );
+  }
+
+  try {
+    const user = await prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (!user) {
+      return res.status(404).json(
+        createResponse({ error: 'User with this email does not exist', status: false })
+      );
+    }
+
+    await forgotPasswordEmail(email);
+
+    return res.status(200).json(
+      createResponse({ 
+        message: 'Password reset code has been sent to your email', 
+        status: true 
+      })
+    );
+  } catch (error) {
+    console.error('Forgot password error:', error);
+    return res.status(500).json(
+      createResponse({ error: 'Internal Server Error', status: false })
+    );
+  }
+};
+
+/**
+ * Reset Password - Verify code and update password
+ * POST /api/user/reset-password
+ */
+const resetPassword = async (req, res, next) => {
+  const { email, code, newPassword } = req.body;
+
+  if (!email || !code || !newPassword) {
+    return res.status(400).json(
+      createResponse({ error: 'Email, code, and new password are required', status: false })
+    );
+  }
+
+  try {
+    const user = await prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (!user) {
+      return res.status(404).json(
+        createResponse({ error: 'User not found', status: false })
+      );
+    }
+
+    if (user.code !== code) {
+      return res.status(400).json(
+        createResponse({ error: 'Invalid or expired reset code', status: false })
+      );
+    }
+
+    // Hash the new password
+    const inputToHash = `${newPassword}${email.length.toString()}`;
+    const hashedPassword = await bcrypt.hash(inputToHash, 10);
+
+    // Update password and clear the code
+    await prisma.user.update({
+      where: { email },
+      data: { 
+        password: hashedPassword,
+        code: null 
+      },
+    });
+
+    return res.status(200).json(
+      createResponse({ 
+        message: 'Password has been reset successfully', 
+        status: true 
+      })
+    );
+  } catch (error) {
+    console.error('Reset password error:', error);
+    return res.status(500).json(
+      createResponse({ error: 'Internal Server Error', status: false })
+    );
+  }
+};
+
 module.exports = {
   login,
   signup,
@@ -468,5 +565,7 @@ module.exports = {
   getUserOrders,
   checkUsername,
   searchUsers,
+  forgotPassword,
+  resetPassword,
 };
 

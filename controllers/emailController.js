@@ -1,13 +1,5 @@
 const { createResponse } = require('../utils/response');
-const nodemailer = require('nodemailer');
-
-const transporter = nodemailer.createTransport({
-  service: 'Gmail',
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-});
+const {verificationEmail} = require('../utils/email');
 
 /**
  * Send Email
@@ -23,13 +15,7 @@ const sendEmail = async (req, res, next) => {
   }
 
   try {
-    const verificationLink = `${process.env.NEXT_PUBLIC_BASE_URL}/verify-email`;
-    await transporter.sendMail({
-      from: process.env.EMAIL_USER,
-      to: email,
-      subject: 'Verify your email',
-      html: `<p>Click <a href="${verificationLink}">here</a> to verify your email.</p>`,
-    });
+    verificationEmail(email);
 
     return res.status(200).json(
       createResponse({ message: 'Verification email sent', status: true })
