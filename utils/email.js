@@ -115,7 +115,6 @@ const verificationEmail = async (email) => {
     return { message: 'Verification email sent' };
   } catch (error) {
     console.error(error);
-    throw new Error('Internal server error');
   }
 };
 
