@@ -31,7 +31,7 @@ const getAllUsers = async (req, res, next) => {
   const skip = (page - 1) * limit;
 
   try {
-    const users = await prisma.users.findMany({
+    const users = await prisma.user.findMany({
       skip: skip,
       take: limit,
     });
