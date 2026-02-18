@@ -12,6 +12,7 @@ router.get('/best-selling', productController.getBestSellingProducts);
 router.get('/free-delivery', productController.getFreeDeliveryProducts);
 router.get('/super-deals', productController.getSuperDealsProducts);
 router.get('/top-of-week', productController.getTopOfWeekProducts);
+router.delete('/:id', productController.deleteProduct);
 router.get('/:productSlug', productController.getProductBySlug);
 
 module.exports = router;

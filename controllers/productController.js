@@ -1,4 +1,5 @@
 const prisma = require('../config/prisma');
+const { bucket } = require('../config/firebase');
 const { createResponse } = require('../utils/response');
 
 /**
@@ -687,11 +688,73 @@ const getTopOfWeekProducts = async (req, res, next) => {
   }
 };
 
+/**
+ * Delete Product
+ * DELETE /api/product/:id
+ */
+const deleteProduct = async (req, res) => {
+  const { id } = req.params;
+  const productId = parseInt(id);
+
+  if (!productId) {
+    return res.status(400).json(
+      createResponse({ error: 'Product ID is required', status: false })
+    );
+  }
+
+  try {
+    const product = await prisma.product.findUnique({
+      where: { id: productId },
+    });
+
+    if (!product) {
+      return res.status(404).json(
+        createResponse({ error: 'Product not found', status: false })
+      );
+    }
+
+    // Delete all related records and the product in a transaction
+    await prisma.$transaction([
+      prisma.cartItem.deleteMany({ where: { productId } }),
+      prisma.favorite.deleteMany({ where: { productId } }),
+      prisma.views.deleteMany({ where: { productId } }),
+      prisma.banner.deleteMany({ where: { productId } }),
+      prisma.orderItem.deleteMany({ where: { productId } }),
+      prisma.product.delete({ where: { id: productId } }),
+    ]);
+
+    // Delete images from Firebase Storage
+    if (product.images && product.images.length > 0) {
+      const bucketName = bucket.name;
+      const deletePromises = product.images.map((url) => {
+        const filePath = url.replace(
+          `https://storage.googleapis.com/${bucketName}/`,
+          ''
+        );
+        return bucket.file(filePath).delete().catch((err) => {
+          console.error(`Failed to delete image: ${url}`, err.message);
+        });
+      });
+      await Promise.all(deletePromises);
+    }
+
+    return res.status(200).json(
+      createResponse({ message: 'Product deleted successfully', status: true })
+    );
+  } catch (error) {
+    console.error('Error deleting product:', error);
+    return res.status(500).json(
+      createResponse({ error: 'Internal Server Error', status: false })
+    );
+  }
+};
+
 module.exports = {
   getProducts,
   getProductBySlug,
   createProduct,
   updateProduct,
+  deleteProduct,
   searchProducts,
   checkProductSlug,
   getProductsByCategory,
