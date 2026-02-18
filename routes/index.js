@@ -53,5 +53,8 @@ router.use('/email', require('./email'));
 // Finance Routes
 router.use('/finance', require('./finance'));
 
+// Upload Routes
+router.use('/upload', require('./upload'));
+
 module.exports = router;
 
