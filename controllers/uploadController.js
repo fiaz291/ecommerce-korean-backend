@@ -1,5 +1,4 @@
 const { bucket } = require("../config/firebase");
-const path = require("path");
 
 const uploadFiles = async (req, res) => {
   try {
@@ -13,19 +12,29 @@ const uploadFiles = async (req, res) => {
 
       return new Promise((resolve, reject) => {
         const blobStream = blob.createWriteStream({
+          resumable: false,
           metadata: {
             contentType: file.mimetype,
           },
         });
 
         blobStream.on("error", (err) => {
+          console.error("Stream error:", err.message);
           reject(err);
         });
 
         blobStream.on("finish", async () => {
-          await blob.makePublic();
-          const publicUrl = `https://storage.googleapis.com/${bucket.name}/${fileName}`;
-          resolve(publicUrl);
+          try {
+            const [url] = await blob.getSignedUrl({
+              action: "read",
+              expires: "12-31-2030",
+            });
+            resolve(url);
+          } catch (signErr) {
+            // Fallback to public URL format
+            const publicUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(fileName)}?alt=media`;
+            resolve(publicUrl);
+          }
         });
 
         blobStream.end(file.buffer);
@@ -39,8 +48,10 @@ const uploadFiles = async (req, res) => {
       urls,
     });
   } catch (error) {
-    console.error("Upload error:", error);
-    return res.status(500).json({ error: "Failed to upload files" });
+    console.error("Upload error:", error.message || error);
+    return res
+      .status(500)
+      .json({ error: "Failed to upload files", details: error.message });
   }
 };
 
@@ -51,18 +62,35 @@ const deleteFile = async (req, res) => {
       return res.status(400).json({ error: "File URL is required" });
     }
 
-    const bucketName = bucket.name;
-    const filePath = url.replace(
-      `https://storage.googleapis.com/${bucketName}/`,
-      ""
-    );
+    // Extract file path from different URL formats
+    let filePath;
+    if (url.includes("firebasestorage.googleapis.com")) {
+      const match = url.match(/\/o\/(.+?)(\?|$)/);
+      filePath = match ? decodeURIComponent(match[1]) : null;
+    } else if (url.includes("storage.googleapis.com")) {
+      filePath = url.replace(
+        `https://storage.googleapis.com/${bucket.name}/`,
+        ""
+      );
+    } else {
+      // Signed URL - extract path from bucket name onwards
+      const bucketName = bucket.name;
+      const match = url.match(new RegExp(`${bucketName}/(.+?)\\?`));
+      filePath = match ? match[1] : null;
+    }
+
+    if (!filePath) {
+      return res.status(400).json({ error: "Could not parse file path from URL" });
+    }
 
     await bucket.file(filePath).delete();
 
     return res.status(200).json({ message: "File deleted successfully" });
   } catch (error) {
-    console.error("Delete error:", error);
-    return res.status(500).json({ error: "Failed to delete file" });
+    console.error("Delete error:", error.message || error);
+    return res
+      .status(500)
+      .json({ error: "Failed to delete file", details: error.message });
   }
 };
 
